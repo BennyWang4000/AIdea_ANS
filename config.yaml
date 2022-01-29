@@ -1,0 +1,7 @@
+train_data_path: 'D:/CodeRepositories/py_project/aidea/ANS/data/train/'
+test_data_path: 'D:/CodeRepositories/py_project/aidea/ANS/data/test'
+
+class: 'train'
+
+epochs: 2
+batch_size: 32

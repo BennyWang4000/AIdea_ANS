@@ -20,7 +20,7 @@ class AudioDataset(Dataset):
         # os.path.join(self.root, self.list[index])
         data, rate = sf.read(os.path.join(
             self.root, self.data_class, self.list[list]))
-        return data, rate
+        return {'audio': data, 'rate': rate}
 
     def __len__(self):
         return len(self.list)

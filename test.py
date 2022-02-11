@@ -8,6 +8,8 @@ import torch
 from model.dataset import AudioDataset
 from matplotlib import pyplot as plt
 import tqdm
+import scipy.io.wavfile
+
 
 with open("config.yaml") as fp:
     config_params = yaml.load(fp, Loader=yaml.FullLoader)
@@ -19,6 +21,8 @@ SAMPLE_NAME_2 = 'mixed_01002_siren.flac'
 # %%
 data, rate = sf.read(os.path.join(TRAIN_DATA_PATH, SAMPLE_NAME))
 data2, rate2 = sf.read(os.path.join(TRAIN_DATA_PATH, SAMPLE_NAME_2))
+# rate, data  = scipy.io.wavfile.read(os.path.join(TRAIN_DATA_PATH, SAMPLE_NAME))
+# rate2, data2  = scipy.io.wavfile.read(os.path.join(TRAIN_DATA_PATH, SAMPLE_NAME_2))
 
 print(data.shape, data2.shape)
 print(rate, rate2)
@@ -27,7 +31,7 @@ plt.specgram(data)
 plt.figure(2)
 plt.plot(data)
 plt.plot(data2)
-
+# -0.5 to 4.5
 print(pesq(rate, data, data2, 'wb'))
 # %%
 

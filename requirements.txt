@@ -1,0 +1,16 @@
+gif>=3.0.0
+ignite>=1.1.0
+librosa>=0.8.1
+matplotlib>=3.5.1
+numpy>=1.21.5
+numpydoc>=1.2
+nussl>=1.1.9
+pesq>=0.0.3
+pytorch_ignite>=0.4.8
+PyYAML>=6.0
+scaper>=1.6.5
+scipy>=1.7.3
+SoundFile>=0.10.3.post1
+speechbrain>=0.5.11
+torch>=1.10.1
+tqdm>=4.62.3

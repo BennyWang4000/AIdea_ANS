@@ -10,17 +10,18 @@ class AudioDataset(Dataset):
 
     def __init__(self, root, data_class):
         # super(AudioDataset, self).__init__()
-        # self.root = 'D:/CodeRepositories/py_project/aidea/ANS/data/train/'
+
         self.root = root
         self.data_class = data_class
         # self.train_data = sorted(glob.glob(os.path.join(root, "/*.*")))
         self.list = os.listdir(os.path.join(self.root, data_class))
+        self.data_len = len(self.list)
 
     def __getitem__(self, index):
         # os.path.join(self.root, self.list[index])
         data, rate = sf.read(os.path.join(
-            self.root, self.data_class, self.list[list]))
+            self.root, self.data_class, self.list[index]))
         return {'audio': data, 'rate': rate}
 
     def __len__(self):
-        return len(self.list)
+        return self.data_len

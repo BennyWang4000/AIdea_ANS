@@ -7,22 +7,28 @@ class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv2d(3, 64, 4, stride=2, padding=1),
+            nn.Conv1d(in_channels=200000, out_channels=1000,
+                      kernel_size=8, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(64, 128, 4, stride=2, padding=1),
-            nn.InstanceNorm2d(128),
+            
+            nn.Conv1d(in_channels=1000, out_channels=200000,
+                      kernel_size=8, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(128, 256, 4, stride=2, padding=1),
-            nn.InstanceNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
+            # nn.Conv2d(4, 25000, 4, stride=2, padding=1),
+            # nn.InstanceNorm2d(128),
+            # nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(256, 512, 4, padding=1),
-            nn.InstanceNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
+            # nn.Conv2d(20, 1000, 4, stride=2, padding=1),
+            # nn.InstanceNorm2d(256),
+            # nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(512, 1, 4, padding=1),
+            # nn.Conv2d(256, 512, 4, padding=1),
+            # nn.InstanceNorm2d(512),
+            # nn.LeakyReLU(0.2, inplace=True),
+
+            # nn.Conv2d(512, 1, 4, padding=1),
         )
 
     def forward(self, x):

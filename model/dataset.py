@@ -1,5 +1,4 @@
 from torch.utils.data import Dataset
-from torch import load
 import os
 import glob
 import soundfile as sf
@@ -21,6 +20,7 @@ class AudioDataset(Dataset):
         # os.path.join(self.root, self.list[index])
         data, rate = sf.read(os.path.join(
             self.root, self.data_class, self.list[index]))
+
         return {'audio': data, 'rate': rate}
 
     def __len__(self):

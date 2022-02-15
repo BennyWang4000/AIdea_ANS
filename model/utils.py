@@ -23,7 +23,9 @@ pesq: -0.5 to 4.5
 #     return loss.item()
 
 def reward_func(rate, ori, denoise):
-    return pesq(rate, ori, denoise) * 100
+    return pesq(rate, ori, denoise) + 1.5
+def reward_func(rate, ori, denoise):
+    return pesq(rate, ori, denoise) + 1.5
 
 
 def pesq(rate, ori, denoise):

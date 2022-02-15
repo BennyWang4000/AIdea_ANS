@@ -11,7 +11,7 @@ import numpy as np
 
 from torchsummary import summary
 from model.dataset import AudioDataset
-from model.models import Generator, Discriminator, Model
+from model.models import UNet
 from model.utils import custom_pesq, show_plt, pesq, save_flac, fourier_bound, reward_func
 
 VERSION = 8
@@ -34,9 +34,9 @@ dataloader = torch.utils.data.DataLoader(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device:\t', device)
 # %%
-net = Model().to(device)
+net = UNet().to(device)
 # print(net)
-print(summary(net, (200000,)))
+# print(summary(net, (200000,)))
 # netG_X2Y = Generator().to(device)
 # netG_Y2X = Generator().to(device)
 # netD_X = Discriminator().to(device)
@@ -79,13 +79,14 @@ def main():
             ori_f = fourier_bound(np.fft.fft(ori), cfg['signal_bound'])
 
             optimizer.zero_grad()
+            print('ori', ori_f.shape)
 
-            noise_pre_f = net(ori_f)
+            noise_pre_f = net(np.expand_dims(ori_f, axis=0))
             audio_pre_f = ori_f - noise_pre_f
 
             audio_pre = np.fft.ifft(audio_pre_f.real).real
             pesq_soc = pesq(rate, ori, audio_pre)
-            reward = reward_func(pesq_soc)
+            reward = custom_pesq(pesq_soc)
 
             loss = loss_func(ori, noise_pre_f) * reward
             loss.backward()
@@ -115,3 +116,5 @@ def main():
 if __name__ == '__main__':
     print('version:\t', VERSION)
     main()
+
+# %%

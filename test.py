@@ -12,7 +12,7 @@ import scipy.fft
 import numpy as np
 # import scipy.io.wavfile
 
-from model.models import Model
+from model.models import Model, UNet, UNET_1D
 from torchsummary import summary
 
 with open("config.yaml") as fp:
@@ -22,15 +22,16 @@ TRAIN_DATA_PATH = 'D://CodeRepositories//py_project//aidea//ANS//data//train'
 SAVING_PATH = 'C://Users//costco//Desktop'
 SAMPLE_NAME = 'mixed_01001_cleaner.flac'
 SAMPLE_NAME_2 = 'mixed_01603_train.flac'
-#%%
+print('done')
+# %%
+# enc= Encoder()
+# dec= Decoder()
+# print(enc)
+# print('===========')
+# print(dec)
+model = UNet()
 
-X = np.random.uniform(-10, 10, 70).reshape(-1, 7)
-print(X)
-#%%
-
-model= Model()
-
-print(summary(model, (200000,)))
+print(summary(model, (1, 200000)))
 # %%
 # ? audio signal
 data, rate = sf.read(os.path.join(TRAIN_DATA_PATH, SAMPLE_NAME))
@@ -58,6 +59,10 @@ plt.figure(3)
 plt.plot(data2_fourier)
 plt.plot(data1_fourier)
 # %%
+sq=np.expand_dims (data1_fourier, axis=0)
+print(sq.shape)
+
+#%%
 data2_10w = data2_fourier[:100000]
 data2_10w = data2_10w
 print('!!', data2_10w.dtype)

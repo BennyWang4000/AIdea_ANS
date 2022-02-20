@@ -12,8 +12,7 @@ from model.utils import show_plt, pesq_func, save_flac, fourier_bound, reward_fu
 
 from time import time
 
-VERSION = 12
-is_start = True
+VERSION = 15
 
 # %%
 with open("config.yaml") as fp:
@@ -63,11 +62,11 @@ pesq_lst = []
 
 
 def main():
+    is_start = 1
     for epoch in range(cfg['epochs']):
         print('epoch:\t', epoch)
 
-        for data in tqdm(dataloader):
-            print('\n')
+        for data in tqdm(dataloader, total=len(dataloader)):
             ####################################################
             if is_start:
                 t = time()
@@ -79,14 +78,15 @@ def main():
                 np.fft.fft(ori, axis=1))
 
             ori_f_3 = np.expand_dims(ori_f, 1)
-            print('\t', ori_f_3.shape)  # (4,1,10000)
+            # print('\t', ori_f_3.shape)  # (4,1,100000)
 
             if is_start:
-                print('(1)\t', time() - t)
+                print('\n(1)\t', time() - t)
             ####################################################
 
             if is_start:
                 t = time()
+
             noise_eval_f = np.squeeze(policy_net(
                 torch.from_numpy(ori_f_3).float()))
 
@@ -96,9 +96,11 @@ def main():
 
             if is_start:
                 t = time()
+
             audio_pre_f = ori_f[:, :noise_eval_f.shape[1]
                                 ] - noise_eval_f.detach().numpy()
-            audio_pre = np.real(np.fft.ifft(audio_pre_f))
+
+            audio_pre = np.real(np.fft.ifft(audio_pre_f, axis=1))
             # audio_pre = np.fft.ifft(audio_pre_f.real).real
             # print('\n', type(rate), rate, '\n', type(ori), ori.shape,
             #       '\n', type(audio_pre), audio_pre.shape, '\n')
@@ -106,9 +108,11 @@ def main():
             if is_start:
                 print('(3)\t', time() - t)
             ####################################################
-            t = time()
+            if is_start:
+                t = time()
+
             pesq_soc = 0
-            for i in range(cfg['batch_size']):
+            for i in range(ori.shape[0]):
                 pesq_soc = pesq_soc + \
                     pesq_func(rate, ori.numpy()[i, :], audio_pre[i, :])
 
@@ -141,14 +145,14 @@ def main():
             pesq_lst.append(pesq_soc)
             loss_lst.append(loss)
 
-            is_start = False
+            is_start = 0
 
         show_plt('loss', loss_lst)
         show_plt('pesq', pesq_lst)
         save_flac(cfg['saving_path'], str(epoch) +
                   '_pre.flac', audio_pre, rate)
         save_flac(cfg['saving_path'], str(epoch) + '_noise.flac',
-                  np.fft.ifft(noise_eval_f.real).real, rate)
+                  np.fft.ifft(noise_eval_f.real, axis=1).real[0, :], rate)
         save_flac(cfg['saving_path'], str(epoch) + '_ori.flac', ori, rate)
 
 

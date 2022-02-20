@@ -14,7 +14,7 @@ import numpy as np
 import torchvision.transforms as trns
 # import scipy.io.wavfile
 
-from model.models import Model, UNet, UNET_1D
+from model.models import UNet
 from torchsummary import summary
 
 with open("config.yaml") as fp:
@@ -49,6 +49,7 @@ print(on)
 print(on.shape)
 
 # %%
+#? model
 # enc= Encoder()
 # dec= Decoder()
 # print(enc)
@@ -56,8 +57,8 @@ print(on.shape)
 # print(dec)
 model = UNet()
 
-# print(summary(model, (1, 2000)))
-print(model)
+print(summary(model, (1, 90000), batch_size=4))
+# print(model)
 # %%
 # ? audio signal
 data, rate = sf.read(os.path.join(TRAIN_DATA_PATH, SAMPLE_NAME))

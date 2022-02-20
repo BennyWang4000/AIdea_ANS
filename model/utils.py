@@ -23,17 +23,19 @@ pesq: -0.5 to 4.5
 #     return loss.item()
 
 def reward_func(rate, ori, denoise):
-    return pesq(rate, ori, denoise) + 1.5
-def reward_func(rate, ori, denoise):
-    return pesq(rate, ori, denoise) + 1.5
+    return (pesq(rate, ori, denoise, 'wb') + 1.5) ** 2
 
 
-def pesq(rate, ori, denoise):
-    return pesq(rate, ori, denoise)
+def reward_func(soc):
+    return (soc + 1.5) ** 2
+
+
+def pesq_func(rate, ori, denoise):
+    return pesq(rate, ori, denoise, 'wb')
 
 
 def custom_pesq(rate, ori, denoise):
-    return 6 / (pesq(rate, ori, denoise) + 1.5)
+    return 6 / (pesq(rate, ori, denoise, 'wb') + 1.5)
 
 
 def custom_pesq(soc):
@@ -42,14 +44,6 @@ def custom_pesq(soc):
 
 def fourier_bound(data, bound):
     return data[:bound]
-    # if(data.shape[0]> bound):
-    #     return data[:bound]
-    # elif(data.shape[0]< bound):
-    #     pad_array= np.zero[bound]
-    #     pad_array[:data.shape[0]]= data
-    #     return pad_array
-    # else:
-    #     return data
 
 
 def show_plt(name, data):

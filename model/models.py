@@ -145,24 +145,30 @@ class UNET_1D(nn.Module):
 class EncBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(EncBlock, self).__init__()
-        self.main = nn.Sequential(
-            nn.ConvTranspose1d(in_ch, out_ch, 3),
+        self.conv = nn.Sequential(
+            nn.Conv1d(in_ch, out_ch, 3),
+            nn.BatchNorm1d(out_ch),
+            nn.LeakyReLU(0.2),
+            nn.Conv1d(out_ch, out_ch, 3),
             nn.BatchNorm1d(out_ch),
             nn.LeakyReLU(0.2),
         )
 
     def forward(self, x):
-        return self.main(x)
+        return self.conv(x)
 
 
 class DecBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(DecBlock, self).__init__()
-        self.up = nn.ConvTranspose1d(in_ch, out_ch, 3)
-        self.down = nn.Sequential(
+        self.trans = nn.ConvTranspose1d(in_ch, out_ch, 2, 2)
+        self.conv = nn.Sequential(
             nn.Conv1d(out_ch * 2, out_ch, 3),
             nn.BatchNorm1d(out_ch),
             nn.LeakyReLU(0.2),
+            nn.Conv1d(out_ch, out_ch, 3),
+            nn.BatchNorm1d(out_ch),
+            nn.LeakyReLU(0.2)
         )
 
     def crop(self, x, enc_ftrs):
@@ -172,120 +178,63 @@ class DecBlock(nn.Module):
         return enc_ftrs
 
     def forward(self, x, encoder_features):
-        x = self.up(x)
+        x = self.trans(x)
         enc_ftrs = self.crop(x, encoder_features)
         x = torch.cat([x, enc_ftrs], dim=1)
         # print('x:', x.shape, 'f:', enc_ftrs.shape,
         #       'fo:', encoder_features.shape)
-        x = self.down(x)
+        x = self.conv(x)
         return x
-
-
-# class Encoder(nn.Module):
-#     def __init__(self, chs=(1, 3, 64, 128, 256, 512)):
-#         super().__init__()
-#         self.enc_blocks = nn.ModuleList(
-#             [EncBlock(chs[i], chs[i+1]) for i in range(len(chs)-1)])
-#         # self.pool = nn.MaxPool1d(2)
-
-#         # self.main = nn.Sequential(
-#         #     nn.Conv1d(1, 3, 12),
-#         #     nn.BatchNorm1d(3),
-#         #     nn.LeakyReLU(0.2),
-#         #     nn.Conv1d(3, 64, 12),
-#         #     nn.BatchNorm1d(64),
-#         #     nn.LeakyReLU(0.2),
-#         #     nn.Conv1d(64, 128, 12),
-#         #     nn.BatchNorm1d(128),
-#         #     nn.LeakyReLU(0.2),
-#         #     nn.Conv1d(128, 256, 12),
-#         #     nn.BatchNorm1d(256),
-#         #     nn.LeakyReLU(0.2)
-#         # )
-
-#     def forward(self, x):
-#         return self.main(x)
-
-
-# class Decoder(nn.Module):
-#     def __init__(self, chs=(256, 128, 64, 3, 1)):
-#         super().__init__()
-#         self.chs = chs
-#         # self.main= nn.Sequential(
-#         #     nn.ConvTranspose1d(256, 128, 12),
-#         #     nn.BatchNorm1d(128),
-#         #     nn.LeakyReLU(0.2),
-#         #     nn.ConvTranspose1d(128, 64, 12),
-#         #     nn.BatchNorm1d(64),
-#         #     nn.LeakyReLU(0.2),
-#         #     nn.ConvTranspose1d(64, 3, 12),
-#         #     nn.BatchNorm1d(3),
-#         #     nn.LeakyReLU(0.2),
-#         #     nn.ConvTranspose1d(3, 1, 12),
-#         #     nn.BatchNorm1d(1),
-#         #     nn.LeakyReLU(0.2)
-#         # )
-#         # self.upconvs = nn.ModuleList(
-#         #     [nn.ConvTranspose1d(chs[i], chs[i+1], 2) for i in range(len(chs)-1)])
-#         self.dec_blocks = nn.ModuleList(
-#             [DecBlock(chs[i], chs[i+1]) for i in range(len(chs)-1)])
-
-#     def forward(self, x, encoder_features):
-
-#         for i in range(len(self.chs)-1):
-#             # x = self.upconvs[i](x)
-#             enc_ftrs = self.crop(encoder_features[i], x)
-#             x = torch.cat([x, enc_ftrs], dim=1)
-#             x = self.dec_blocks[i](x)
-#         return x
-
-#     def crop(self, enc_ftrs, x):
-#         C, H, W = x.shape
-#         print(C, H, W)
-#         enc_ftrs = torchvision.transforms.CenterCrop([H, W])(enc_ftrs)
-#         return enc_ftrs
 
 
 class UNet(nn.Module):
     def __init__(self):
         super(UNet, self).__init__()
-        self.inc = EncBlock(1, 3)
-        self.enc1 = EncBlock(3, 64)
-        self.enc2 = EncBlock(64, 128)
-        self.enc3 = EncBlock(128, 256)
-        self.enc4 = EncBlock(256, 512)
-        self.dec1 = DecBlock(512, 256)
-        self.dec2 = DecBlock(256, 128)
-        self.dec3 = DecBlock(128, 64)
-        self.dec4 = DecBlock(64, 3)
-        self.out = nn.Conv1d(3, 1, 3)
-        # for i in range(len(chs) - 1):
-        #     self.main.append(EncBlock(chs[i], chs[i + 1]))
+        self.max_pool = nn.MaxPool1d(2, 2)
 
-        # for i in reversed(range(len(chs) - 1)):
-        #     self.main.append(DecBlock(chs[i + 1], chs[i]))
+        self.enc = EncBlock(1, 64)
+        # self.enc1 = EncBlock(1, 3)
+        # self.enc2 = EncBlock(3, 64)
+
+        self.enc3 = EncBlock(64, 128)
+        self.enc4 = EncBlock(128, 256)
+        self.enc5 = EncBlock(256, 512)
+        self.enc6 = EncBlock(512, 1024)
+
+        self.dec1 = DecBlock(1024, 512)
+        self.dec2 = DecBlock(512, 256)
+        self.dec3 = DecBlock(256, 128)
+        self.dec4 = DecBlock(128, 64)
+
+        self.out = nn.Conv1d(64, 1, 1)
+        # self.dec5 = DecBlock(64, 3)
+        # self.out = nn.Conv1d(3, 1, 1)
 
     def forward(self, x):
-        inc = self.inc(x)
-        x1 = self.enc1(inc)
-        x2 = self.enc2(x1)
-        x3 = self.enc3(x2)
-        x4 = self.enc4(x3)
-        x = self.dec1(x4, x3)
-        x = self.dec2(x, x2)
-        x = self.dec3(x, x1)
-        x = self.dec4(x, inc)
+        x1 = self.enc(x)
+        x1_pool = self.max_pool(x1)
+        # x1 = self.enc1(x)
+        # x1_pool = self.max_pool(x1)
+        # x2 = self.enc2(x1_pool)
+        # x2_pool = self.max_pool(x2)
+
+        x3 = self.enc3(x1_pool)
+        x3_pool = self.max_pool(x3)
+        x4 = self.enc4(x3_pool)
+        x4_pool = self.max_pool(x4)
+        x5 = self.enc5(x4_pool)
+        # x5_pool = self.max_pool(x5)
+        # x6 = self.enc6(x5_pool)
+
+        # x = self.dec1(x6, x5)
+        # x = self.dec2(x, x4)
+        x = self.dec2(x5, x4)
+        x = self.dec3(x, x3)
+        x = self.dec4(x, x1)
+        # x = self.dec5(x, x1)
+
         out = self.out(x)
         return out
-
-        # enc = self.encoder(x)
-        # print('enc:', enc.shape)
-        # out = self.decoder(enc[::-1][0], enc[::-1][1:])
-        # # out      = self.head(out)
-
-        # # if self.retain_dim:
-        # #     out = F.interpolate(out, out_sz)
-        # return out
 
 
 class Model(nn.Module):
@@ -327,84 +276,4 @@ class Model(nn.Module):
         )
 
     def forward(self, x):
-        return self.main(x)
-
-
-class Discriminator(nn.Module):
-    """Some Information about Discriminator"""
-
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        self.main = nn.Sequential(
-            nn.Conv2d(3, 64, 4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(64, 128, 4, stride=2, padding=1),
-            nn.InstanceNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(128, 256, 4, stride=2, padding=1),
-            nn.InstanceNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(256, 512, 4, padding=1),
-            nn.InstanceNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(512, 1, 4, padding=1),
-        )
-
-    def forward(self, x):
-
-        return self.main(x)
-
-
-class Generator(nn.Module):
-    """Some Information about Generator"""
-
-    def __init__(self):
-        super(Generator, self).__init__()
-        self.main = nn.Sequential(
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(3, 64, 7),
-            nn.InstanceNorm2d(64),
-            nn.ReLU(inplace=True),
-
-            # Downsampling
-            nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(256),
-            nn.ReLU(inplace=True),
-
-            # # Residual blocks
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-            # ResidualBlock(256),
-
-            # Upsampling
-            nn.ConvTranspose2d(256, 128, 3, stride=2,
-                               padding=1, output_padding=1),
-            nn.InstanceNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(128, 64, 3, stride=2,
-                               padding=1, output_padding=1),
-            nn.InstanceNorm2d(64),
-            nn.ReLU(inplace=True),
-
-            # Output layer
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(64, 3, 7),
-            nn.Tanh()
-        )
-
-    def forward(self, x):
-
         return self.main(x)

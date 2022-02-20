@@ -7,11 +7,13 @@ saving_path: '/gdrive/MyDrive/Code Repository/aidea/ANS/data'
 
 class: 'train'
 
-train_per: 0.5
-signal_bound: 185000
+train_per: 0.1
+eposide: 5
+signal_bound: 90000
 
 epochs: 1
-batch_size: 32
+batch_size: 4
 lr: 0.0002
 beta1: 0.5
 beta2: 0.999 
+gamma: 0.99

@@ -1,27 +1,32 @@
 # %%
-from email.mime import audio
-from pickletools import optimize
 import yaml
 import torch
 from tqdm import tqdm
-import speechbrain as sb
 from math import floor
-
+import torchvision.transforms as trns
 import numpy as np
 
-from torchsummary import summary
 from model.dataset import AudioDataset
 from model.models import UNet
-from model.utils import custom_pesq, show_plt, pesq, save_flac, fourier_bound, reward_func
+from model.utils import show_plt, pesq_func, save_flac, fourier_bound, reward_func
 
-VERSION = 8
+from time import time
+
+VERSION = 12
+is_start = True
 
 # %%
 with open("config.yaml") as fp:
     cfg = yaml.load(fp, Loader=yaml.FullLoader)
 
 print(cfg)
-dataset = AudioDataset(cfg['train_data_path'], cfg['class'])
+
+transform = trns.Compose([
+    trns.ToTensor()
+])
+
+dataset = AudioDataset(trns.ToTensor(), cfg['train_data_path'],
+                       cfg['class'], cfg['signal_bound'])
 
 train_num = floor(dataset.__len__() * cfg['train_per'])
 print('train_num:\t', train_num)
@@ -31,32 +36,26 @@ train_set, val_set = torch.utils.data.random_split(
 dataloader = torch.utils.data.DataLoader(
     dataset=train_set, batch_size=cfg.get('batch_size'), shuffle=True)
 
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device:\t', device)
 # %%
-net = UNet().to(device)
-# print(net)
-# print(summary(net, (200000,)))
-# netG_X2Y = Generator().to(device)
-# netG_Y2X = Generator().to(device)
-# netD_X = Discriminator().to(device)
-# netD_Y = Discriminator().to(device)
+policy_net = UNet().to(device)
+policy_net.train()
+# policy_net = policy_net.float()
+# target_net = UNet().to(device)
+# summary(policy_net, (1, 2000))
+# print(policy_net)
+# target_net.load_state_dict(policy_net.state_dict())
+# target_net.eval()
 
-loss_func = torch.nn.MSELoss().to(device)
-
+loss_func = torch.nn.MSELoss()
+# loss_func = F.mse_loss()
 
 # g_params = list(netG_X2Y.parameters()) + list(netG_Y2X.parameters())
 optimizer = torch.optim.Adam(
-    net.parameters(), lr=cfg['lr'], betas=(cfg['beta1'], cfg['beta2']))
+    policy_net.parameters(), lr=cfg['lr'], betas=(cfg['beta1'], cfg['beta2']))
 
-# # Create optimizers for the generators and discriminators
-# g_optimizer = torch.optim.Adam(
-#     g_params, lr=cfg['lr'], betas=(cfg['beta1'], cfg['beta2']))
-
-# d_x_optimizer = torch.optim.Adam(
-#     netD_X.parameters(), lr=cfg['lr'], betas=(cfg['beta1'], cfg['beta2']))
-# d_y_optimizer = torch.optim.Adam(
-#     netD_Y.parameters(), lr=cfg['lr'], betas=(cfg['beta1'], cfg['beta2']))
 
 loss_lst = []
 pesq_lst = []
@@ -65,54 +64,95 @@ pesq_lst = []
 
 def main():
     for epoch in range(cfg['epochs']):
-        print('epoch: ', epoch)
+        print('epoch:\t', epoch)
 
-        progress_bar = tqdm(enumerate(dataloader), total=len(dataloader))
+        for data in tqdm(dataloader):
+            print('\n')
+            ####################################################
+            if is_start:
+                t = time()
 
-        for i, data in enumerate(progress_bar):
-            if (i % 100 == 0):
-                print(i, '...')
+            ori, rate = data
 
-            print(data)
-            ori = data['audio'].to(device)
-            rate = data['data'].to(device)
-            ori_f = fourier_bound(np.fft.fft(ori), cfg['signal_bound'])
+            rate = rate[0].numpy()
+            ori_f = np.real(
+                np.fft.fft(ori, axis=1))
+
+            ori_f_3 = np.expand_dims(ori_f, 1)
+            print('\t', ori_f_3.shape)  # (4,1,10000)
+
+            if is_start:
+                print('(1)\t', time() - t)
+            ####################################################
+
+            if is_start:
+                t = time()
+            noise_eval_f = np.squeeze(policy_net(
+                torch.from_numpy(ori_f_3).float()))
+
+            if is_start:
+                print('(2)\t', time() - t)
+            ####################################################
+
+            if is_start:
+                t = time()
+            audio_pre_f = ori_f[:, :noise_eval_f.shape[1]
+                                ] - noise_eval_f.detach().numpy()
+            audio_pre = np.real(np.fft.ifft(audio_pre_f))
+            # audio_pre = np.fft.ifft(audio_pre_f.real).real
+            # print('\n', type(rate), rate, '\n', type(ori), ori.shape,
+            #       '\n', type(audio_pre), audio_pre.shape, '\n')
+
+            if is_start:
+                print('(3)\t', time() - t)
+            ####################################################
+            t = time()
+            pesq_soc = 0
+            for i in range(cfg['batch_size']):
+                pesq_soc = pesq_soc + \
+                    pesq_func(rate, ori.numpy()[i, :], audio_pre[i, :])
+
+            if is_start:
+                print('(4)\t', time() - t)
+            ####################################################
+
+            if is_start:
+                t = time()
+
+            reward = reward_func(pesq_soc)
+
+            # loss = loss_func(torch.from_numpy(audio_pre_f),
+            #                  torch.full(audio_pre_f.shape, reward), requires_grad=True)
+
+            # loss = loss_func(noise_eval_f, reward +
+            #                  cfg['gamma'] * noise_next_f.max(1)[0])
+            # loss = loss_func(noise_eval_f, noise_eval_f + reward)
+            # loss = policy_net.detach()-reward
+            loss = noise_eval_f.mean()
+            loss -= reward
 
             optimizer.zero_grad()
-            print('ori', ori_f.shape)
-
-            noise_pre_f = net(np.expand_dims(ori_f, axis=0))
-            audio_pre_f = ori_f - noise_pre_f
-
-            audio_pre = np.fft.ifft(audio_pre_f.real).real
-            pesq_soc = pesq(rate, ori, audio_pre)
-            reward = custom_pesq(pesq_soc)
-
-            loss = loss_func(ori, noise_pre_f) * reward
             loss.backward()
+            optimizer.step()
 
+            if is_start:
+                print('(5)\t', time() - t)
+            ####################################################
             pesq_lst.append(pesq_soc)
             loss_lst.append(loss)
 
-            optimizer.step()
-
-            # ? CYCLE GAN
-            # audio_X2Y = netG_X2Y(audio_data)
-            # audio_Y2X = netG_Y2X(audio_data)
-
-            # loss_X2Y = loss_func(audio_data, audio_X2Y)
-            # loss_Y2X = loss_func(audio_data, audio_Y2X)
+            is_start = False
 
         show_plt('loss', loss_lst)
         show_plt('pesq', pesq_lst)
         save_flac(cfg['saving_path'], str(epoch) +
                   '_pre.flac', audio_pre, rate)
         save_flac(cfg['saving_path'], str(epoch) + '_noise.flac',
-                  np.fft.ifft(noise_pre_f.real).real, rate)
+                  np.fft.ifft(noise_eval_f.real).real, rate)
         save_flac(cfg['saving_path'], str(epoch) + '_ori.flac', ori, rate)
+
+
 # %%
-
-
 if __name__ == '__main__':
     print('version:\t', VERSION)
     main()

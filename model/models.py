@@ -4,7 +4,6 @@ import torch
 import torchvision
 
 
-
 class EncBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(EncBlock, self).__init__()
@@ -87,12 +86,12 @@ class UNet(nn.Module):
         x4 = self.enc4(x3_pool)
         x4_pool = self.max_pool(x4)
         x5 = self.enc5(x4_pool)
-        # x5_pool = self.max_pool(x5)
-        # x6 = self.enc6(x5_pool)
+        x5_pool = self.max_pool(x5)
+        x6 = self.enc6(x5_pool)
 
-        # x = self.dec1(x6, x5)
-        # x = self.dec2(x, x4)
-        x = self.dec2(x5, x4)
+        x = self.dec1(x6, x5)
+        x = self.dec2(x, x4)
+        # x = self.dec2(x5, x4)
         x = self.dec3(x, x3)
         x = self.dec4(x, x1)
         # x = self.dec5(x, x1)

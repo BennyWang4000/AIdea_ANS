@@ -3,15 +3,15 @@
 train_data_path: '/gdrive/MyDrive/Code Repository/aidea/ANS/data/train_classification'
 test_data_path: '/gdrive/MyDrive/Code Repository/aidea/ANS/data/test'
 
-saving_path: '/gdrive/MyDrive/Code Repository/aidea/ANS/AIdea_ANS/src'
+saving_path: '/gdrive/MyDrive/Code Repository/aidea/ANS/AIdea_ANS/runs/exp2'
 
 class: 'train'
 
-train_per: 0.03
+train_per: 0.8
 eposide: 5
-signal_bound: 90400
+signal_bound: 92000
 
-epochs: 1
+epochs: 2
 batch_size: 4
 lr: 0.0002
 beta1: 0.5

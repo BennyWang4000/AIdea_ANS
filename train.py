@@ -8,11 +8,12 @@ import numpy as np
 
 from model.dataset import AudioDataset
 from model.models import UNet
-from model.utils import show_plt, pesq_func, save_flac, fourier_bound, reward_func
+from model.utils import show_plt, pesq_func, save_flac, save_model, reward_func
+from model.mixit_wrapper import MixITLossWrapper
 
 from time import time
 
-VERSION = 15
+VERSION = 29
 
 # %%
 with open("config.yaml") as fp:
@@ -48,7 +49,8 @@ policy_net.train()
 # target_net.load_state_dict(policy_net.state_dict())
 # target_net.eval()
 
-loss_func = torch.nn.MSELoss()
+loss_func = MixITLossWrapper(torch.nn.MSELoss())
+# loss_func = torch.nn.MSELoss()
 # loss_func = F.mse_loss()
 
 # g_params = list(netG_X2Y.parameters()) + list(netG_Y2X.parameters())
@@ -87,8 +89,10 @@ def main():
             if is_start:
                 t = time()
 
-            noise_eval_f = np.squeeze(policy_net(
-                torch.from_numpy(ori_f_3).float()))
+            noise_eval_f_3 = policy_net(
+                torch.from_numpy(ori_f_3).float().to(device))
+
+            noise_eval_f = np.squeeze(noise_eval_f_3)
 
             if is_start:
                 print('(2)\t', time() - t)
@@ -97,8 +101,8 @@ def main():
             if is_start:
                 t = time()
 
-            audio_pre_f = ori_f[:, :noise_eval_f.shape[1]
-                                ] - noise_eval_f.detach().numpy()
+            audio_pre_f = ori_f - noise_eval_f.detach().cpu().numpy()
+            audio_pre_f_3 = ori_f_3 - noise_eval_f_3.detach().cpu().numpy()
 
             audio_pre = np.real(np.fft.ifft(audio_pre_f, axis=1))
             # audio_pre = np.fft.ifft(audio_pre_f.real).real
@@ -112,9 +116,15 @@ def main():
                 t = time()
 
             pesq_soc = 0
-            for i in range(ori.shape[0]):
-                pesq_soc = pesq_soc + \
-                    pesq_func(rate, ori.numpy()[i, :], audio_pre[i, :])
+
+            try:
+                for i in range(ori.shape[0]):
+                    pesq_soc = pesq_soc + pesq_func(
+                        rate, ori.cpu().numpy()[i, :], audio_pre[i, :]
+                    )
+            except:
+                print('error')
+                continue
 
             if is_start:
                 print('(4)\t', time() - t)
@@ -132,8 +142,16 @@ def main():
             #                  cfg['gamma'] * noise_next_f.max(1)[0])
             # loss = loss_func(noise_eval_f, noise_eval_f + reward)
             # loss = policy_net.detach()-reward
-            loss = noise_eval_f.mean()
-            loss -= reward
+
+            # ? worked
+            # loss = noise_eval_f.mean()
+            # loss -= reward
+
+            print('\n')
+            print(audio_pre_f.shape, ori_f.shape)
+            print('\n')
+
+            loss = loss_func(audio_pre_f_3, ori_f_3)
 
             optimizer.zero_grad()
             loss.backward()
@@ -143,17 +161,22 @@ def main():
                 print('(5)\t', time() - t)
             ####################################################
             pesq_lst.append(pesq_soc)
-            loss_lst.append(loss)
+            loss_lst.append(loss.detach().cpu().numpy())
 
             is_start = 0
 
-        show_plt('loss', loss_lst)
-        show_plt('pesq', pesq_lst)
+        save_ori = np.squeeze(ori[0, :])
+
+        show_plt('loss', loss_lst, cfg['saving_path'])
+        show_plt('pesq', pesq_lst, cfg['saving_path'])
         save_flac(cfg['saving_path'], str(epoch) +
-                  '_pre.flac', audio_pre, rate)
+                  '_pre.flac', np.squeeze(audio_pre[0, :save_ori.shape[0]]), rate)
+        save_flac(cfg['saving_path'], str(epoch) +
+                  '_ori.flac', save_ori, rate)
         save_flac(cfg['saving_path'], str(epoch) + '_noise.flac',
-                  np.fft.ifft(noise_eval_f.real, axis=1).real[0, :], rate)
-        save_flac(cfg['saving_path'], str(epoch) + '_ori.flac', ori, rate)
+                  np.real(np.fft.ifft(np.squeeze(noise_eval_f.detach().cpu().numpy()[0, :]))), rate)
+
+        save_model(cfg, cfg['saving_path'], 'model.pt')
 
 
 # %%

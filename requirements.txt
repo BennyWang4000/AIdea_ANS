@@ -16,3 +16,4 @@ torch
 torchsummary
 torchvision
 tqdm
+wave

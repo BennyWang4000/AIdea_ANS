@@ -35,6 +35,9 @@ SAVING_PATH = 'C://Users//costco//Desktop'
 SAMPLE_NAME = 'mixed_01069_dog_bark.flac'
 SAMPLE_NAME_2 = 'vocal_01069.flac'
 print('done')
+#%%
+tup= (0 , 1, 2, 3)
+print(tup.shape[0])
 # %%
 z = np.zeros((5,))
 a = np.array([1, 2, 3])

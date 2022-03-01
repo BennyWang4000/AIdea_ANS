@@ -5,45 +5,57 @@ import soundfile as sf
 import os
 import librosa
 import numpy as np
+from config import *
 
 '''
 pesq: -0.5 to 4.5
-reward_pesq: (1 to 6)^ 2    = 1 to 36
-if batch= 4: (1 to 6)^ 2* 4 = 4 to 144
+# reward_pesq: (1 to 6)^ 2    = 1 to 36
+# if batch= 4: (1 to 6)^ 2* 4 = 4 to 144
 '''
 
 
-def mul_dim_stft():
-    pass
+def mul_dim_stft(audio_np, batch_size):
+    stft_np = np.empty(
+        (batch_size, STFT_SHAPE[0], STFT_SHAPE[1]), dtype=np.float32)
+    for i in range(batch_size):
+        stft_np[i, :, :] = np.abs(librosa.core.stft(
+            np.squeeze(audio_np[i, :]), n_fft=N_FFT, hop_length=HOP_LENGTH))
+
+    # mixed_stft_db = librosa.amplitude_to_db(mixed_stft)
+    return stft_np
 
 
-def mul_dim_griffinlim():
-    pass
+def mul_dim_griffinlim(stft_np, batch_size):
+    istft_np = np.empty(
+        (batch_size, SIGNAL_BOUND), dtype=np.float32)
+
+    for i in range(batch_size):
+        istft_np[i, :] = librosa.griffinlim(
+            np.squeeze(stft_np[i, :, :]), hop_length=HOP_LENGTH)
+
+    return istft_np
 
 
-def reward_func(rate, ori, denoise):
-    return (pesq(rate, ori, denoise, 'wb') + 1.5) ** 4
+def reward_func(pesq_soc):
+    '''
+    return 0.1 to 0
+    '''
+    return (0.02 * (6.0 / (pesq_soc + 1.5))) - 0.02
+
+
+# def reward_func(rate, ori, denoise):
+#     '''
+#     return 0.1 to 0
+#     '''
+#     return (0.02 * (6.0 / (pesq(rate, ori, denoise, 'wb') + 1.5))) - 0.02
 
 
 def pesq_func(rate, ori, denoise):
     return pesq(rate, ori, denoise, 'wb')
 
 
-def custom_pesq(rate, ori, denoise):
-    return 6 / (pesq(rate, ori, denoise, 'wb') + 1.5)
-
-
 def fourier_bound(data, bound):
     return data[:bound]
-
-
-def show_plt(name, data, path):
-    fig = plt.figure()
-    plt.plot(data)
-    plt.ylabel(name)
-    plt.show
-
-    plt.savefig(os.path.join(path, name + '.jpg'))
 
 
 def get_saving_path(path):
@@ -56,8 +68,26 @@ def get_saving_path(path):
     return os.path.join(path, 'exp' + str(num))
 
 
-def save_flac(path, name, data, rate):
+def show_plt(name, data, path):
+    plt.figure()
+    plt.plot(data)
+    plt.title(name)
+    plt.show
+    plt.savefig(os.path.join(path, name + '.jpg'))
+
+
+def show_plt_via_lst(name_lst, data_lst, path):
+    for i in range(len(name_lst)):
+        show_plt(name_lst[i], data_lst[i], path)
+
+
+def save_flac(name, data, path, rate):
     sf.write(os.path.join(path, name), data, rate, format='FLAC')
+
+
+def save_flac_via_lst(name_lst, data_lst, path, rate):
+    for i in range(len(name_lst)):
+        save_flac(name_lst[i], data_lst[i], path, rate)
 
 
 def save_model(state, path, name):

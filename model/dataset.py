@@ -13,15 +13,11 @@ class AudioDataset(Dataset):
 
     def __init__(self, root, data_class, signal_bound):
         super(AudioDataset, self).__init__()
-        # self.transform = transform
         self.signal_bound = signal_bound
         self.root = root
-        # self.hop_length = hop_length
-        # self.n_fft = n_fft
         self.vocal_pth = os.path.join(self.root, 'vocal')
         self.mixed_pth = os.path.join(self.root, 'mixed')
         self.data_class = data_class
-        # self.train_data = sorted(glob.glob(os.path.join(root, "/*.*")))
         self.mixed_lst = os.listdir(os.path.join(self.mixed_pth, data_class))
         self.vocal_lst = os.listdir(os.path.join(self.vocal_pth, data_class))
 

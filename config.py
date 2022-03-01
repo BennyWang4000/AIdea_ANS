@@ -10,7 +10,10 @@ TRAIN_CLASS = 'dog_bark'
 # test_data_path= 'D:/CodeRepositories/py_project/aidea/ANS/data/test'
 
 # * train config =============
-TRAIN_PER = 0.04
+TRAIN_PER = 0.9
+IS_VALID = True
+CHECK_POINT= 10
+
 EPOSIDE = 5
 EPOCHS = 2
 BATCH_SIZE = 10

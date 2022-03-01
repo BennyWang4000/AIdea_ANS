@@ -1,4 +1,4 @@
 # AIdea_Speech_Enhancement
 still building
 
-![pepe_clap](https://c.tenor.com/3z22V8VO58UAAAAd/pepe-clap-pepe-frog.gif)
+![pepe_clap](https://cdn.discordapp.com/attachments/742940177965514794/948163680158228530/pepe-clap-pepe-frogg.gif)
